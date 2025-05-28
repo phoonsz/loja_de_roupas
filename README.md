@@ -43,23 +43,7 @@ Este é um sistema completo de **gestão comercial** para lojas de roupas, desen
 
 ## 🗂️ Estrutura do Projeto
 
-loja_roupas/
-├── app.py                   # Arquivo principal para iniciar o sistema
-├── config.py                # Configuração do banco de dados e tema
-├── ui/
-│   ├── __init__.py          # Inicializador do pacote ui
-│   ├── base.py              # Estrutura principal da aplicação
-│   ├── produtos_frame.py    # Gestão de produtos
-│   ├── vendas_frame.py      # Controle de vendas
-│   └── relatorios_frame.py  # Relatórios financeiros
-├── models/                  # (opcional) Lógica de acesso ao banco
-│   ├── __init__.py
-│   ├── produto.py
-│   └── venda.py
-├── utils.py                 # (opcional) Funções auxiliares
-└── README.md                # Documentação do projeto
-
-
+<pre> ```text loja_roupas/ ├── app.py # Arquivo principal para iniciar o sistema ├── config.py # Configuração do banco de dados e tema ├── ui/ │ ├── __init__.py # Inicializador do pacote ui │ ├── base.py # Estrutura principal da aplicação │ ├── produtos_frame.py # Gestão de produtos │ ├── vendas_frame.py # Controle de vendas │ └── relatorios_frame.py # Relatórios financeiros ├── models/ # (opcional) Lógica de acesso ao banco │ ├── __init__.py │ ├── produto.py │ └── venda.py ├── utils.py # (opcional) Funções auxiliares └── README.md # Documentação do projeto ``` </pre>
 ---
 
 ## ⚙️ Pré-requisitos
