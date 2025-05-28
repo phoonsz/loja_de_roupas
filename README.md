@@ -85,6 +85,8 @@ pip install customtkinter pymongo
 ### **Relatórios financeiros**
 ![Tela de Venda](images/Relatórios.png)
 
+### **Diagrama UML**
+![UML](images/UML.png)
 ---
 
 ## 📝 Licença
