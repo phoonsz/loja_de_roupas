@@ -92,3 +92,4 @@ Este projeto está sob a licença MIT. Sinta-se livre para usar e modificar.
 
 # 👤 Autor
 Desenvolvido por [phoon](https://github.com/phoonsz).
+![phoon](https://github.com/user-attachments/assets/85edc0c6-c746-47c7-a690-8ac0614eae10)
