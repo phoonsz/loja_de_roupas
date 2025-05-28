@@ -44,7 +44,7 @@ Este é um sistema completo de **gestão comercial** para lojas de roupas, desen
 ## 🗂️ Estrutura do Projeto
 
 ```text 
-loja_roupas/
+loja_de_roupas/
 ├── app.py # Arquivo principal para iniciar o sistema
 ├── config.py # Configuração do banco de dados e tema
 ├── ui/
