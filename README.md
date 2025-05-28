@@ -79,4 +79,4 @@ Relatórios financeiros
 Este projeto está sob a licença MIT. Sinta-se livre para usar e modificar.
 
 # 👤 Autor
-Desenvolvido por [phoon].
+Desenvolvido por [phoon](github.com/phoonsz).
