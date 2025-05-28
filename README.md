@@ -56,7 +56,7 @@ loja_de_roupas/
 ├── images/
 │ ├── UML.png # Diagrama UML
 │ ├── Relatórios.png # Print da tela de relatórios
-│ ├── Registro.png # Print da tela de registro de produtos
+│ ├── Registro.png # Print da tela de registro de vendas
 │ ├── Gerenciamento.png # Print da tela de gerenciamento
 └── README.md # Documentação do projeto
 ```
@@ -76,11 +76,12 @@ pip install customtkinter pymongo
 
 ## 📸 Capturas de Tela
 
-Tela de produtos
-
-Carrinho de compras
-
+Registro de Estoque
+![Registro de Vendas](images/Estoque.png)
+Tela de venda
+![Tela de Venda](images/Venda.png)
 Relatórios financeiros
+![Tela de Venda](images/Relatórios.png)
 
 ---
 
