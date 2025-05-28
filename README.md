@@ -43,3 +43,40 @@ Este é um sistema completo de **gestão comercial** para lojas de roupas, desen
 
 ## ✅ Estrutura do Projeto
 
+loja_roupas/
+├── app.py # Arquivo principal para iniciar o sistema
+├── config.py # Configuração do banco de dados e tema
+├── ui/
+│ ├── base.py # Estrutura principal da aplicação
+│ ├── produtos_frame.py # Gestão de produtos
+│ ├── vendas_frame.py # Controle de vendas
+│ └── relatorios_frame.py # Relatórios financeiros
+
+---
+
+## ✅ Pré-requisitos
+
+- **Python 3.x** instalado.
+- **MongoDB** rodando localmente (`mongodb://localhost:27017/`).
+
+### 📦 Instalação de dependências:
+
+```bash
+pip install customtkinter pymongo
+```
+
+✅ Capturas de Tela
+
+Tela de produtos
+
+Carrinho de compras
+
+Relatórios financeiros
+
+---
+
+✅ Licença
+Este projeto está sob a licença MIT. Sinta-se livre para usar e modificar.
+
+✅ Autor
+Desenvolvido por [phoon].
