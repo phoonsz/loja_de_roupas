@@ -53,6 +53,7 @@ loja_roupas/
 │ ├── produtos_frame.py # Gestão de produtos
 │ ├── vendas_frame.py # Controle de vendas
 │ └── relatorios_frame.py # Relatórios financeiros
+├── UML.png # Diagrama UML
 └── README.md # Documentação do projeto
 ```
 
