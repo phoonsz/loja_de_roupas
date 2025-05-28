@@ -1,10 +1,45 @@
-# loja_de_roupas
-Lojinha de roupas feita para o trabalho de Aplic. IOT, Python 4.0
+# 🛍️ Sistema de Gestão para Loja de Roupas
 
-Este programa é um Sistema de Gestão Comercial desenvolvido com Python, CustomTkinter para a interface gráfica e MongoDB para o armazenamento de dados.
+Este é um sistema completo de **gestão comercial** para lojas de roupas, desenvolvido com **Python**, **CustomTkinter** e **MongoDB**. Ele permite o **controle de estoque, registro de vendas e geração de relatórios financeiros**, através de uma interface gráfica moderna e intuitiva.
 
-Ele foi projetado para facilitar o gerenciamento de estoque, vendas e relatórios financeiros de uma loja de roupas.
+---
 
-Funcionalidades:
-Gestão de Produtos, Controle de Vendas, Geração de Relatórios, possui uma GUI moderna usando MongoDB para agregar tudo.
+## ✅ Funcionalidades
+
+### 🛍️ Gestão de Produtos
+- Cadastro, edição e exclusão de produtos.
+- Visualização de estoque em tabela com busca dinâmica.
+- Armazenamento das informações no banco de dados MongoDB.
+
+### 💸 Controle de Vendas
+- Adição de produtos a um carrinho de compras.
+- Controle de quantidade e atualização automática do estoque.
+- Registro de vendas com múltiplos métodos de pagamento: Dinheiro, Cartão e Pix.
+- Visualização de histórico de vendas recentes.
+
+### 📊 Geração de Relatórios
+- Relatórios de vendas por período.
+- Informações como:
+  - Total de vendas.
+  - Quantidade de vendas.
+  - Produto mais vendido.
+- Relatório automático dos últimos 30 dias.
+
+### 🎨 Interface Gráfica Moderna
+- Interface com tema escuro, claro ou automático.
+- Layout responsivo com menu lateral de navegação.
+- Desenvolvido com **CustomTkinter**.
+
+---
+
+## ✅ Tecnologias Utilizadas
+- **Python 3.x**
+- **CustomTkinter** → Interface gráfica moderna.
+- **MongoDB** → Banco de dados NoSQL.
+- **Tkinter** → Widgets e componentes gráficos.
+- **bson** → Manipulação de ObjectId.
+
+---
+
+## ✅ Estrutura do Projeto
 
