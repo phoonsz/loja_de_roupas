@@ -65,7 +65,7 @@ loja_roupas/
 pip install customtkinter pymongo
 ```
 
-📸 Capturas de Tela
+## 📸 Capturas de Tela
 
 Tela de produtos
 
@@ -75,8 +75,8 @@ Relatórios financeiros
 
 ---
 
-📝 Licença
+## 📝 Licença
 Este projeto está sob a licença MIT. Sinta-se livre para usar e modificar.
 
-👤 Autor
+# 👤 Autor
 Desenvolvido por [phoon].
