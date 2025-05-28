@@ -77,7 +77,7 @@ pip install customtkinter pymongo
 ## 📸 Capturas de Tela
 
 Registro de Estoque
-![Registro de Vendas](images/Estoque.png)
+![Estoque](images/Estoque.png)
 Tela de venda
 ![Tela de Venda](images/Venda.png)
 Relatórios financeiros
