@@ -35,14 +35,23 @@ class ProdutosFrame(ctk.CTkFrame):
             selectmode="browse"
         )
 
-        for col in ("id", "nome", "categoria", "tamanho", "cor", "preco", "estoque"):
-            self.tree.heading(col, text=col.capitalize())
+        #colunas
+        self.tree.heading("id", text="ID")
+        self.tree.heading("nome", text="Nome")
+        self.tree.heading("categoria", text="Categoria")
+        self.tree.heading("tamanho", text="Tamanho")
+        self.tree.heading("cor", text="Cor")
+        self.tree.heading("preco", text="Preço")
+        self.tree.heading("estoque", text="Estoque")
 
+        self.tree.column("id", width=50, anchor="c")
+        self.tree.column("nome", width=80,)
+        self.tree.column("categoria", width=20,)
+        self.tree.column("tamanho", width=70, anchor="c")      #fiquei com preguica de
+        self.tree.column("cor", width=1)                       #tentar entender o width
+        self.tree.column("preco", width=20, anchor="c")        #mas ta legal assim fodasekkkkkkkkk
+        self.tree.column("estoque", width=20, anchor="c")
         self.tree.grid(row=0, column=0, sticky="nsew")
-
-        scrollbar = ttk.Scrollbar(self.tree_frame, orient="vertical", command=self.tree.yview)
-        scrollbar.grid(row=0, column=1, sticky="ns")
-        self.tree.configure(yscrollcommand=scrollbar.set)
 
         # Formulário
         self.form_frame = ctk.CTkFrame(self.main_frame)
