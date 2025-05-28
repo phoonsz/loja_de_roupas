@@ -4,7 +4,7 @@ Este é um sistema completo de **gestão comercial** para lojas de roupas, desen
 
 ---
 
-## ✅ Funcionalidades
+## ✨ Funcionalidades
 
 ### 🛍️ Gestão de Produtos
 - Cadastro, edição e exclusão de produtos.
@@ -32,7 +32,7 @@ Este é um sistema completo de **gestão comercial** para lojas de roupas, desen
 
 ---
 
-## ✅ Tecnologias Utilizadas
+## 🛠️ Tecnologias Utilizadas
 - **Python 3.x**
 - **CustomTkinter** → Interface gráfica moderna.
 - **MongoDB** → Banco de dados NoSQL.
@@ -41,7 +41,7 @@ Este é um sistema completo de **gestão comercial** para lojas de roupas, desen
 
 ---
 
-## ✅ Estrutura do Projeto
+## 🗂️ Estrutura do Projeto
 
 loja_roupas/
 ├── app.py # Arquivo principal para iniciar o sistema
@@ -54,7 +54,7 @@ loja_roupas/
 
 ---
 
-## ✅ Pré-requisitos
+## ⚙️ Pré-requisitos
 
 - **Python 3.x** instalado.
 - **MongoDB** rodando localmente (`mongodb://localhost:27017/`).
@@ -65,7 +65,7 @@ loja_roupas/
 pip install customtkinter pymongo
 ```
 
-✅ Capturas de Tela
+📸 Capturas de Tela
 
 Tela de produtos
 
@@ -75,8 +75,8 @@ Relatórios financeiros
 
 ---
 
-✅ Licença
+📝 Licença
 Este projeto está sob a licença MIT. Sinta-se livre para usar e modificar.
 
-✅ Autor
+👤 Autor
 Desenvolvido por [phoon].
