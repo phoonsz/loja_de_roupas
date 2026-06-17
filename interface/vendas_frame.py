@@ -1,344 +1,231 @@
 import customtkinter as ctk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, simpledialog
+from config import produtos_collection, vendas_collection
 from datetime import datetime
-from bson import ObjectId
-
-from config import produtos_col, vendas_col, client
+import pymongo
 
 class VendasFrame(ctk.CTkFrame):
-    def __init__(self, parent):
+    def __init__(self, parent, controller):
         super().__init__(parent)
+        self.controller = controller
+        self.carrinho = []  # Lista de dicionários: {produto_id, nome, preco_unitario, quantidade, subtotal}
 
-        #layout
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(1, weight=1)
+        self.grid_columnconfigure(1, weight=1)
+        self.grid_rowconfigure(0, weight=1)
 
-        #título
-        self.title_label = ctk.CTkLabel(self, text="Registro de Vendas", font=ctk.CTkFont(size=18, weight="bold"))
-        self.title_label.grid(row=0, column=0, padx=20, pady=20, sticky="w")
+        # ========== COLUNA ESQUERDA: Produtos Disponíveis ==========
+        frame_esquerda = ctk.CTkFrame(self, fg_color="transparent")
+        frame_esquerda.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+        frame_esquerda.grid_rowconfigure(1, weight=1)
+        frame_esquerda.grid_columnconfigure(0, weight=1)
 
-        #conteúdo
-        self.main_frame = ctk.CTkFrame(self)
-        self.main_frame.grid(row=1, column=0, padx=20, pady=(0, 20), sticky="nsew")
-        self.main_frame.grid_columnconfigure(0, weight=1)
-        self.main_frame.grid_rowconfigure(0, weight=1)
+        ctk.CTkLabel(frame_esquerda, text="🔍 Buscar Produto:").grid(row=0, column=0, sticky="w")
+        self.entry_busca = ctk.CTkEntry(frame_esquerda)
+        self.entry_busca.grid(row=0, column=0, sticky="ew", pady=(0, 10))
+        self.entry_busca.bind('<KeyRelease>', self.buscar_produtos)
 
-        #lista de produtos
-        self.produtos_frame = ctk.CTkFrame(self.main_frame)
-        self.produtos_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
-        self.produtos_frame.grid_columnconfigure(0, weight=1)
-        self.produtos_frame.grid_rowconfigure(1, weight=1)
+        self.tree_produtos = ttk.Treeview(frame_esquerda, columns=("nome", "preco", "estoque"), show="headings")
+        self.tree_produtos.heading("nome", text="Produto")
+        self.tree_produtos.heading("preco", text="Preço (R$)")
+        self.tree_produtos.heading("estoque", text="Em Estoque")
+        self.tree_produtos.column("nome", width=180)
+        self.tree_produtos.column("preco", width=100)
+        self.tree_produtos.column("estoque", width=80)
+        self.tree_produtos.grid(row=1, column=0, sticky="nsew")
 
-        #busca de produtos
-        self.search_produto_frame = ctk.CTkFrame(self.produtos_frame)
-        self.search_produto_frame.grid(row=0, column=0, padx=5, pady=5, sticky="ew")
-        self.search_produto_frame.grid_columnconfigure(0, weight=1)
+        scroll_esq = ttk.Scrollbar(frame_esquerda, orient="vertical", command=self.tree_produtos.yview)
+        scroll_esq.grid(row=1, column=1, sticky="ns")
+        self.tree_produtos.configure(yscrollcommand=scroll_esq.set)
 
-        self.search_produto_entry = ctk.CTkEntry(self.search_produto_frame, placeholder_text="Buscar produtos...")
-        self.search_produto_entry.grid(row=0, column=0, padx=5, pady=5, sticky="ew")
+        self.btn_add = ctk.CTkButton(frame_esquerda, text="➕ Adicionar ao Carrinho", command=self.adicionar_ao_carrinho)
+        self.btn_add.grid(row=2, column=0, pady=10, sticky="ew")
 
-        self.search_produto_btn = ctk.CTkButton(self.search_produto_frame, text="Buscar", width=80, command=self.buscar_produtos_venda)
-        self.search_produto_btn.grid(row=0, column=1, padx=5, pady=5)
+        self.carregar_produtos_disponiveis()
 
-        #tabela de produtos
-        self.produtos_tree = ttk.Treeview(
-            self.produtos_frame,
-            columns=("id", "nome", "categoria", "tamanho", "cor", "preco", "estoque"),
-            show="headings",
-            selectmode="browse"
-        )
+        # ========== COLUNA DIREITA: Carrinho ==========
+        frame_direita = ctk.CTkFrame(self, fg_color="transparent")
+        frame_direita.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
+        frame_direita.grid_rowconfigure(1, weight=1)
+        frame_direita.grid_columnconfigure(0, weight=1)
 
-        self.produtos_tree.heading("id", text="ID")
-        self.produtos_tree.heading("nome", text="Nome")
-        self.produtos_tree.heading("categoria", text="Categoria")
-        self.produtos_tree.heading("tamanho", text="Tamanho")
-        self.produtos_tree.heading("cor", text="Cor")
-        self.produtos_tree.heading("preco", text="Preço")
-        self.produtos_tree.heading("estoque", text="Estoque")
+        ctk.CTkLabel(frame_direita, text="🛒 Carrinho", font=("Arial", 16, "bold")).grid(row=0, column=0, pady=(0, 10))
 
-        self.produtos_tree.column("id", width=50, anchor="center")
-        self.produtos_tree.column("nome", width=150)
-        self.produtos_tree.column("categoria", width=100)
-        self.produtos_tree.column("tamanho", width=70, anchor="center")
-        self.produtos_tree.column("cor", width=100)
-        self.produtos_tree.column("preco", width=80, anchor="e")
-        self.produtos_tree.column("estoque", width=70, anchor="center")
-        self.produtos_tree.grid(row=1, column=0, sticky="nsew")
+        self.tree_carrinho = ttk.Treeview(frame_direita, columns=("produto", "qtd", "preco_unit", "subtotal"), show="headings")
+        self.tree_carrinho.heading("produto", text="Produto")
+        self.tree_carrinho.heading("qtd", text="Qtd.")
+        self.tree_carrinho.heading("preco_unit", text="Preço Unit.")
+        self.tree_carrinho.heading("subtotal", text="Subtotal")
+        self.tree_carrinho.column("produto", width=150)
+        self.tree_carrinho.column("qtd", width=60)
+        self.tree_carrinho.column("preco_unit", width=90)
+        self.tree_carrinho.column("subtotal", width=90)
+        self.tree_carrinho.grid(row=1, column=0, sticky="nsew")
+        # CORREÇÃO: Duplo clique para editar quantidade
+        self.tree_carrinho.bind('<Double-1>', self.editar_quantidade_carrinho)
 
-        #scroll produtos
-        scrollbar = ttk.Scrollbar(self.produtos_frame, orient="vertical", command=self.produtos_tree.yview)
-        scrollbar.grid(row=1, column=1, sticky="ns")
-        self.produtos_tree.configure(yscrollcommand=scrollbar.set)
+        scroll_dir = ttk.Scrollbar(frame_direita, orient="vertical", command=self.tree_carrinho.yview)
+        scroll_dir.grid(row=1, column=1, sticky="ns")
+        self.tree_carrinho.configure(yscrollcommand=scroll_dir.set)
 
-        #carrinho
-        self.carrinho_frame = ctk.CTkFrame(self.main_frame)
-        self.carrinho_frame.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
-        self.carrinho_frame.grid_columnconfigure(0, weight=1)
-        self.carrinho_frame.grid_rowconfigure(1, weight=1)
+        self.label_total = ctk.CTkLabel(frame_direita, text="Total: R$ 0,00", font=("Arial", 14, "bold"))
+        self.label_total.grid(row=2, column=0, pady=10, sticky="w")
 
-        self.carrinho_label = ctk.CTkLabel(self.carrinho_frame, text="Carrinho de Compras", font=ctk.CTkFont(weight="bold"))
-        self.carrinho_label.grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        btn_frame = ctk.CTkFrame(frame_direita, fg_color="transparent")
+        btn_frame.grid(row=3, column=0, sticky="ew")
+        btn_frame.grid_columnconfigure(0, weight=1)
+        btn_frame.grid_columnconfigure(1, weight=1)
 
-        self.carrinho_tree = ttk.Treeview(
-            self.carrinho_frame,
-            columns=("produto", "quantidade", "preco", "subtotal"),
-            show="headings"
-        )
+        self.btn_limpar = ctk.CTkButton(btn_frame, text="🗑️ Limpar Carrinho", command=self.limpar_carrinho, fg_color="gray")
+        self.btn_limpar.grid(row=0, column=0, padx=5, sticky="ew")
 
-        self.carrinho_tree.heading("produto", text="Produto")
-        self.carrinho_tree.heading("quantidade", text="Qtd")
-        self.carrinho_tree.heading("preco", text="Preço Unit.")
-        self.carrinho_tree.heading("subtotal", text="Subtotal")
+        self.btn_finalizar = ctk.CTkButton(btn_frame, text="✅ Finalizar Venda", command=self.finalizar_venda, fg_color="green")
+        self.btn_finalizar.grid(row=0, column=1, padx=5, sticky="ew")
 
-        self.carrinho_tree.column("produto", width=150)
-        self.carrinho_tree.column("quantidade", width=50, anchor="center")
-        self.carrinho_tree.column("preco", width=80, anchor="e")
-        self.carrinho_tree.column("subtotal", width=80, anchor="e")
-        self.carrinho_tree.grid(row=1, column=0, sticky="nsew")
+    def carregar_produtos_disponiveis(self):
+        for item in self.tree_produtos.get_children():
+            self.tree_produtos.delete(item)
+        for p in produtos_collection.find():
+            self.tree_produtos.insert("", "end", iid=str(p["_id"]), values=(p["nome"], f"R${p['preco']:.2f}", p["quantidade"]))
 
-        #scroll carrinho
-        scrollbar_carrinho = ttk.Scrollbar(self.carrinho_frame, orient="vertical", command=self.carrinho_tree.yview)
-        scrollbar_carrinho.grid(row=1, column=1, sticky="ns")
-        self.carrinho_tree.configure(yscrollcommand=scrollbar_carrinho.set)
+    def buscar_produtos(self, event=None):
+        termo = self.entry_busca.get().strip()
+        for item in self.tree_produtos.get_children():
+            self.tree_produtos.delete(item)
+        query = {}
+        if termo:
+            query["nome"] = {"$regex": termo, "$options": "i"}
+        for p in produtos_collection.find(query):
+            self.tree_produtos.insert("", "end", iid=str(p["_id"]), values=(p["nome"], f"R${p['preco']:.2f}", p["quantidade"]))
 
-        #controle de quantidade
-        self.controle_carrinho_frame = ctk.CTkFrame(self.carrinho_frame)
-        self.controle_carrinho_frame.grid(row=2, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
-
-        self.quantidade_label = ctk.CTkLabel(self.controle_carrinho_frame, text="Quantidade:")
-        self.quantidade_label.grid(row=0, column=0, padx=5, pady=5)
-
-        self.quantidade_entry = ctk.CTkEntry(self.controle_carrinho_frame, width=60)
-        self.quantidade_entry.grid(row=0, column=1, padx=5, pady=5)
-        self.quantidade_entry.insert(0, "1")
-
-        self.adicionar_carrinho_btn = ctk.CTkButton(self.controle_carrinho_frame, text="Adicionar", width=80, command=self.adicionar_ao_carrinho)
-        self.adicionar_carrinho_btn.grid(row=0, column=2, padx=5, pady=5)
-
-        self.remover_carrinho_btn = ctk.CTkButton(self.controle_carrinho_frame, text="Remover", width=80, command=self.remover_do_carrinho, fg_color="#d9534f", hover_color="#c9302c")
-        self.remover_carrinho_btn.grid(row=0, column=3, padx=5, pady=5)
-
-        #resumo da venda
-        self.resumo_frame = ctk.CTkFrame(self.carrinho_frame)
-        self.resumo_frame.grid(row=3, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
-
-        self.total_label = ctk.CTkLabel(self.resumo_frame, text="Total: R$ 0.00", font=ctk.CTkFont(weight="bold"))
-        self.total_label.grid(row=0, column=0, padx=5, pady=5, sticky="w")
-
-        self.forma_pagamento_label = ctk.CTkLabel(self.resumo_frame, text="Pagamento:")
-        self.forma_pagamento_label.grid(row=1, column=0, padx=5, pady=5, sticky="w")
-
-        self.forma_pagamento_combobox = ctk.CTkComboBox(self.resumo_frame, values=["Dinheiro", "Cartão de Crédito", "Cartão de Débito", "Pix"])
-        self.forma_pagamento_combobox.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
-
-        self.finalizar_venda_btn = ctk.CTkButton(self.resumo_frame, text="Finalizar Venda", command=self.finalizar_venda, fg_color="#5cb85c", hover_color="#4cae4c")
-        self.finalizar_venda_btn.grid(row=2, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
-
-        #histórico de vendas
-        self.historico_frame = ctk.CTkFrame(self)
-        self.historico_frame.grid(row=2, column=0, padx=20, pady=(0, 20), sticky="nsew")
-        self.historico_frame.grid_columnconfigure(0, weight=1)
-        self.historico_frame.grid_rowconfigure(1, weight=1)
-
-        self.historico_label = ctk.CTkLabel(self.historico_frame, text="Histórico de Vendas", font=ctk.CTkFont(weight="bold"))
-        self.historico_label.grid(row=0, column=0, padx=5, pady=5, sticky="w")
-
-        self.historico_tree = ttk.Treeview(
-            self.historico_frame,
-            columns=("id", "data", "total", "pagamento"),
-            show="headings"
-        )
-
-        self.historico_tree.heading("id", text="ID")
-        self.historico_tree.heading("data", text="Data")
-        self.historico_tree.heading("total", text="Total")
-        self.historico_tree.heading("pagamento", text="Pagamento")
-
-        self.historico_tree.column("id", width=80, anchor="center")
-        self.historico_tree.column("data", width=150)
-        self.historico_tree.column("total", width=100, anchor="e")
-        self.historico_tree.column("pagamento", width=120)
-        self.historico_tree.grid(row=1, column=0, sticky="nsew")
-
-        #scroll histórico
-        scrollbar_historico = ttk.Scrollbar(self.historico_frame, orient="vertical", command=self.historico_tree.yview)
-        scrollbar_historico.grid(row=1, column=1, sticky="ns")
-        self.historico_tree.configure(yscrollcommand=scrollbar_historico.set)
-
-        #variáveis
-        self.carrinho = []
-
-        #carregar dados
-        self.carregar_produtos_venda()
-        self.carregar_historico_vendas()
-        self.bind("<<ShowFrame>>", lambda e: self.carregar_historico_vendas())
-    def carregar_produtos_venda(self): #carrega produtos com estoque > 0
-        for item in self.produtos_tree.get_children():
-            self.produtos_tree.delete(item)
-
-        produtos = produtos_col.find({"quantidade_estoque": {"$gt": 0}}).sort("nome", 1)
-        for produto in produtos:
-            self.produtos_tree.insert("", "end", values=(
-                str(produto["_id"]),
-                produto["nome"],
-                produto["categoria"],
-                produto["tamanho"],
-                produto["cor"],
-                f"R$ {produto['preco']:.2f}",
-                produto["quantidade_estoque"]
-            ))
-
-    def buscar_produtos_venda(self): #busca produtos para venda
-        termo = self.search_produto_entry.get().strip().lower()
-        for item in self.produtos_tree.get_children():
-            self.produtos_tree.delete(item)
-
-        query = {
-            "quantidade_estoque": {"$gt": 0},
-            "$or": [
-                {"nome": {"$regex": termo, "$options": "i"}},
-                {"categoria": {"$regex": termo, "$options": "i"}},
-                {"cor": {"$regex": termo, "$options": "i"}}
-            ]
-        } if termo else {"quantidade_estoque": {"$gt": 0}}
-
-        produtos = produtos_col.find(query).sort("nome", 1)
-        for produto in produtos:
-            self.produtos_tree.insert("", "end", values=(
-                str(produto["_id"]),
-                produto["nome"],
-                produto["categoria"],
-                produto["tamanho"],
-                produto["cor"],
-                f"R$ {produto['preco']:.2f}",
-                produto["quantidade_estoque"]
-            ))
-
-    def adicionar_ao_carrinho(self): #adiciona produto ao carrinho
-        selected = self.produtos_tree.focus()
-        if not selected:
-            messagebox.showwarning("Aviso", "Selecione um produto para adicionar ao carrinho.")
+    def adicionar_ao_carrinho(self):
+        selecionado = self.tree_produtos.selection()
+        if not selecionado:
+            messagebox.showerror("Erro", "Selecione um produto na lista!")
             return
 
-        try:
-            quantidade = int(self.quantidade_entry.get())
-            if quantidade <= 0:
-                raise ValueError
-        except ValueError:
-            messagebox.showwarning("Aviso", "Quantidade deve ser um número inteiro positivo.")
+        produto_id = selecionado[0]
+        produto = produtos_collection.find_one({"_id": pymongo.ObjectId(produto_id)})
+        if not produto:
+            messagebox.showerror("Erro", "Produto não encontrado no banco!")
             return
 
-        values = self.produtos_tree.item(selected, "values")
-        produto_id = values[0]
-        nome = values[1]
-        preco = float(values[5].replace("R$ ", ""))
-        estoque = int(values[6])
-
-        if quantidade > estoque:
-            messagebox.showwarning("Aviso", "Quantidade solicitada maior que o estoque disponível.")
+        # CORREÇÃO: Validar estoque disponível
+        estoque_atual = produto.get("quantidade", 0)
+        if estoque_atual <= 0:
+            messagebox.showerror("Erro", "Este produto está esgotado!")
             return
 
+        qtd = simpledialog.askinteger("Quantidade", f"Quantos {produto['nome']}? (Estoque: {estoque_atual})", minvalue=1, maxvalue=estoque_atual)
+        if not qtd:
+            return
+
+        # Verifica se o item já está no carrinho para somar
         for item in self.carrinho:
             if item["produto_id"] == produto_id:
-                nova_quantidade = item["quantidade"] + quantidade
-                if nova_quantidade > estoque:
-                    messagebox.showwarning("Aviso", "Quantidade total solicitada maior que o estoque disponível.")
+                nova_qtd = item["quantidade"] + qtd
+                if nova_qtd > estoque_atual:
+                    messagebox.showerror("Erro", f"Quantidade total no carrinho ({nova_qtd}) excede o estoque ({estoque_atual})!")
                     return
-
-                item["quantidade"] = nova_quantidade
-                item["subtotal"] = nova_quantidade * preco
-                self.atualizar_carrinho()
+                item["quantidade"] = nova_qtd
+                item["subtotal"] = item["quantidade"] * item["preco_unitario"]
+                self.atualizar_carrinho_ui()
                 return
 
+        # Adiciona novo item ao carrinho
         self.carrinho.append({
             "produto_id": produto_id,
-            "nome": nome,
-            "preco": preco,
-            "quantidade": quantidade,
-            "subtotal": quantidade * preco
+            "nome": produto["nome"],  # CORREÇÃO: Salva o nome para snapshot futuro
+            "preco_unitario": produto["preco"],
+            "quantidade": qtd,
+            "subtotal": qtd * produto["preco"]
         })
+        self.atualizar_carrinho_ui()
 
-        self.atualizar_carrinho()
-
-    def remover_do_carrinho(self): #remove item do carrinho
-        selected = self.carrinho_tree.focus()
-        if not selected:
-            messagebox.showwarning("Aviso", "Selecione um item para remover do carrinho.")
+    def editar_quantidade_carrinho(self, event):
+        """Permite editar a quantidade com duplo clique no carrinho."""
+        selecionado = self.tree_carrinho.selection()
+        if not selecionado:
             return
+        # Descobre o índice do item selecionado
+        index = self.tree_carrinho.index(selecionado[0])
+        item = self.carrinho[index]
+        
+        # Busca estoque atualizado
+        produto_db = produtos_collection.find_one({"_id": pymongo.ObjectId(item["produto_id"])})
+        if not produto_db:
+            messagebox.showerror("Erro", "Produto não encontrado!")
+            return
+        
+        nova_qtd = simpledialog.askinteger("Editar Quantidade", f"Nova quantidade para {item['nome']}? (Estoque: {produto_db['quantidade']})", minvalue=1, maxvalue=produto_db['quantidade'])
+        if not nova_qtd:
+            return
+        
+        item["quantidade"] = nova_qtd
+        item["subtotal"] = nova_qtd * item["preco_unitario"]
+        self.atualizar_carrinho_ui()
 
-        index = int(self.carrinho_tree.index(selected))
-        if 0 <= index < len(self.carrinho):
-            self.carrinho.pop(index)
-            self.atualizar_carrinho()
-
-    def atualizar_carrinho(self): #atualiza visual do carrinho e total
-        for item in self.carrinho_tree.get_children():
-            self.carrinho_tree.delete(item)
-
+    def atualizar_carrinho_ui(self):
+        for row in self.tree_carrinho.get_children():
+            self.tree_carrinho.delete(row)
+        
         total = 0
         for item in self.carrinho:
-            self.carrinho_tree.insert("", "end", values=(
-                item["nome"],
-                item["quantidade"],
-                f"R$ {item['preco']:.2f}",
-                f"R$ {item['subtotal']:.2f}"
-            ))
+            self.tree_carrinho.insert("", "end", values=(item["nome"], item["quantidade"], f"R${item['preco_unitario']:.2f}", f"R${item['subtotal']:.2f}"))
             total += item["subtotal"]
+        
+        self.label_total.configure(text=f"Total: R$ {total:.2f}")
 
-        self.total_label.configure(text=f"Total: R$ {total:.2f}")
+    def limpar_carrinho(self):
+        self.carrinho.clear()
+        self.atualizar_carrinho_ui()
 
-    def finalizar_venda(self): #registra venda e atualiza estoque
+    # CORREÇÃO MAIS IMPORTANTE: Remove a transação e adiciona try/except + snapshot do nome
+    def finalizar_venda(self):
         if not self.carrinho:
-            messagebox.showwarning("Aviso", "O carrinho está vazio.")
+            messagebox.showerror("Erro", "Carrinho vazio!")
             return
 
-        forma_pagamento = self.forma_pagamento_combobox.get()
-        if not forma_pagamento:
-            messagebox.showwarning("Aviso", "Selecione uma forma de pagamento.")
+        # Confirmação
+        if not messagebox.askyesno("Confirmar", f"Finalizar venda no valor de {self.label_total.cget('text')}?"):
             return
 
-        venda = {
-            "produtos": [],
-            "valor_total": sum(item["subtotal"] for item in self.carrinho),
-            "data_venda": datetime.now(),
-            "forma_pagamento": forma_pagamento
-        }
-
+        # Prepara o documento da venda com snapshot dos nomes
+        itens_venda = []
         for item in self.carrinho:
-            venda["produtos"].append({
-                "produto_id": ObjectId(item["produto_id"]),
+            itens_venda.append({
+                "produto_id": item["produto_id"],
+                "nome_produto": item["nome"],  # <--- SALVANDO O NOME AQUI (SNAPSHOT)
                 "quantidade": item["quantidade"],
-                "preco_unitario": item["preco"]
+                "preco_unitario": item["preco_unitario"],
+                "subtotal": item["subtotal"]
             })
 
+        documento_venda = {
+            "data": datetime.now(),
+            "itens": itens_venda,
+            "total": sum(item["subtotal"] for item in self.carrinho)
+        }
+
+        # CORREÇÃO: Remove a transação (comentada) e faz sequencial com try/except
         try:
-            with client.start_session() as session:
-                with session.start_transaction():
-                    vendas_col.insert_one(venda, session=session)
-                    for item in self.carrinho:
-                        produtos_col.update_one(
-                            {"_id": ObjectId(item["produto_id"])},
-                            {"$inc": {"quantidade_estoque": -item["quantidade"]}},
-                            session=session
-                        )
+            # 1. Insere a venda
+            vendas_collection.insert_one(documento_venda)
 
-            messagebox.showinfo("Sucesso", "Venda registrada com sucesso!")
-            self.carrinho.clear()
-            self.atualizar_carrinho()
-            self.carregar_produtos_venda()
-            self.carregar_historico_vendas()
+            # 2. Atualiza o estoque de cada produto (baixa)
+            for item in self.carrinho:
+                resultado = produtos_collection.update_one(
+                    {"_id": pymongo.ObjectId(item["produto_id"])},
+                    {"$inc": {"quantidade": -item["quantidade"]}}
+                )
+                if resultado.matched_count == 0:
+                    raise Exception(f"Produto {item['nome']} não encontrado no estoque!")
+
+            # Sucesso
+            self.limpar_carrinho()
+            messagebox.showinfo("Sucesso", "Venda finalizada com sucesso!")
+            # Atualiza a lista de produtos disponíveis
+            self.carregar_produtos_disponiveis()
+
         except Exception as e:
-            messagebox.showerror("Erro", f"Erro ao registrar venda: {str(e)}")
-
-    def carregar_historico_vendas(self): #carrega vendas recentes
-        for item in self.historico_tree.get_children():
-            self.historico_tree.delete(item)
-
-        vendas = vendas_col.find().sort("data_venda", -1).limit(50)
-        for venda in vendas:
-            self.historico_tree.insert("", "end", values=(
-                str(venda["_id"]),
-                venda["data_venda"].strftime("%d/%m/%Y %H:%M"),
-                f"R$ {venda['valor_total']:.2f}",
-                venda["forma_pagamento"]
-            ))
+            messagebox.showerror("Erro", f"Falha ao finalizar venda!\nDetalhes: {str(e)}")
