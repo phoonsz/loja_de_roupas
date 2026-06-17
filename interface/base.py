@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from tkinter import ttk, messagebox
+from tkinter import ttk
 from interface.produtos_frame import ProdutosFrame
 from interface.vendas_frame import VendasFrame
 from interface.relatorios_frame import RelatoriosFrame
@@ -7,81 +7,69 @@ from interface.relatorios_frame import RelatoriosFrame
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
+        self.title("Loja de Roupas - Gestão")
+        self.geometry("1000x600")
+        # CORREÇÃO 1: Removido o alpha transparente
+        # self.attributes('-alpha', 0.90)  # <--- DELETAR ESTA LINHA
 
-        # Janela
-        self.title("Sistema de Gestão - Loja de Roupas")
-        self.resizable(True, True)
-        self.attributes('-alpha', 0.90)
-        self.after(0, lambda: self.state('zoomed'))
+        # CORREÇÃO 2: Estilizar as Treeviews para combinarem com o tema escuro
+        self.style = ttk.Style()
+        self.style.theme_use("clam")  # Permite customização completa
+        self.aplicar_tema_tabelas("dark")  # Tema inicial escuro
 
-        # Layout
-        self.grid_rowconfigure(0, weight=1)
+        # Configurar grid da janela principal
         self.grid_columnconfigure(1, weight=1)
+        self.grid_rowconfigure(0, weight=1)
 
-        # Barra lateral
-        self.create_sidebar()
-
-        # Telas principais
-        self.frames = {}
-        for F in (ProdutosFrame, VendasFrame, RelatoriosFrame):
-            frame = F(self)
-            self.frames[F] = frame
-            frame.grid(row=0, column=1, sticky="nsew")
-
-        self.show_frame(ProdutosFrame)
-
-    def create_sidebar(self):
-        # Menu lateral
-        self.sidebar = ctk.CTkFrame(self, width=140, corner_radius=0)
+        # Criar sidebar
+        self.sidebar = ctk.CTkFrame(self, width=200, corner_radius=0, fg_color="#1a1a1a")
         self.sidebar.grid(row=0, column=0, sticky="nsew")
         self.sidebar.grid_rowconfigure(4, weight=1)
 
-        # Logo
-        self.logo_label = ctk.CTkLabel(
-            self.sidebar,
-            text="Loja do phoon :)",
-            font=ctk.CTkFont(size=20, weight="bold")
-        )
-        self.logo_label.grid(row=0, column=0, padx=20, pady=(20, 10))
+        self.btn_produtos = ctk.CTkButton(self.sidebar, text="📦 Produtos", command=self.mostrar_produtos)
+        self.btn_produtos.grid(row=0, column=0, padx=20, pady=(20, 10), sticky="ew")
 
-        # Botões de navegação
-        self.produtos_btn = ctk.CTkButton(
-            self.sidebar,
-            text="Produtos",
-            command=lambda: self.show_frame(ProdutosFrame)
-        )
-        self.produtos_btn.grid(row=1, column=0, padx=20, pady=10)
+        self.btn_vendas = ctk.CTkButton(self.sidebar, text="🛒 Vendas", command=self.mostrar_vendas)
+        self.btn_vendas.grid(row=1, column=0, padx=20, pady=10, sticky="ew")
 
-        self.vendas_btn = ctk.CTkButton(
-            self.sidebar,
-            text="Vendas",
-            command=lambda: self.show_frame(VendasFrame)
-        )
-        self.vendas_btn.grid(row=2, column=0, padx=20, pady=10)
+        self.btn_relatorios = ctk.CTkButton(self.sidebar, text="📊 Relatórios", command=self.mostrar_relatorios)
+        self.btn_relatorios.grid(row=2, column=0, padx=20, pady=10, sticky="ew")
 
-        self.relatorios_btn = ctk.CTkButton(
-            self.sidebar,
-            text="Relatórios",
-            command=lambda: self.show_frame(RelatoriosFrame)
-        )
-        self.relatorios_btn.grid(row=3, column=0, padx=20, pady=10)
+        # Container principal para as telas
+        self.container = ctk.CTkFrame(self, fg_color="transparent")
+        self.container.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
+        self.container.grid_rowconfigure(0, weight=1)
+        self.container.grid_columnconfigure(0, weight=1)
 
-        # Opção de tema
-        self.appearance_mode_label = ctk.CTkLabel(self.sidebar, text="Tema:", anchor="w")
-        self.appearance_mode_label.grid(row=5, column=0, padx=20, pady=(10, 0))
+        # Dicionário de telas
+        self.frames = {}
+        for F in (ProdutosFrame, VendasFrame, RelatoriosFrame):
+            frame = F(self.container, self)
+            self.frames[F.__name__] = frame
+            frame.grid(row=0, column=0, sticky="nsew")
 
-        self.appearance_mode_optionemenu = ctk.CTkOptionMenu(
-            self.sidebar,
-            values=["Light", "Dark", "System"],
-            command=self.change_appearance_mode
-        )
-        self.appearance_mode_optionemenu.grid(row=6, column=0, padx=20, pady=(0, 20))
-        self.appearance_mode_optionemenu.set("Dark")  # Tema padrão
+        self.mostrar_produtos()
 
-    def show_frame(self, cont):
-        frame = self.frames[cont]
-        frame.tkraise()
-        frame.event_generate("<<ShowFrame>>")
+    def aplicar_tema_tabelas(self, modo):
+        """Aplica as cores corretas nas Treeviews baseado no tema (dark/light)"""
+        if modo == "dark":
+            bg = "#2b2b2b"
+            fg = "#ffffff"
+            heading_bg = "#333333"
+        else:
+            bg = "#ffffff"
+            fg = "#000000"
+            heading_bg = "#e0e0e0"
+        
+        self.style.configure("Treeview", background=bg, foreground=fg, fieldbackground=bg)
+        self.style.configure("Treeview.Heading", background=heading_bg, foreground=fg, font=('Arial', 10, 'bold'))
+        self.style.map('Treeview', background=[('selected', '#347083')])
 
-    def change_appearance_mode(self, new_appearance_mode):
-        ctk.set_appearance_mode(new_appearance_mode.lower())
+    def mostrar_produtos(self):
+        self.frames["ProdutosFrame"].tkraise()
+
+    def mostrar_vendas(self):
+        self.frames["VendasFrame"].tkraise()
+
+    def mostrar_relatorios(self):
+        self.frames["RelatoriosFrame"].tkraise()
