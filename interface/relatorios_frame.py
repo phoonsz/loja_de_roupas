@@ -1,217 +1,95 @@
 import customtkinter as ctk
 from tkinter import ttk, messagebox
-from datetime import datetime, timedelta
-from bson import ObjectId
-
-from config import vendas_col, produtos_col
+from config import vendas_collection
+from datetime import datetime
 
 class RelatoriosFrame(ctk.CTkFrame):
-    def __init__(self, parent):
+    def __init__(self, parent, controller):
         super().__init__(parent)
+        self.controller = controller
 
-        #layout
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
 
-        #título
-        self.title_label = ctk.CTkLabel(self, text="Relatórios", font=ctk.CTkFont(size=18, weight="bold"))
-        self.title_label.grid(row=0, column=0, padx=20, pady=20, sticky="w")
+        # Filtros
+        frame_filtros = ctk.CTkFrame(self, fg_color="transparent")
+        frame_filtros.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
+        frame_filtros.grid_columnconfigure(0, weight=1)
+        frame_filtros.grid_columnconfigure(1, weight=1)
+        frame_filtros.grid_columnconfigure(2, weight=1)
+        frame_filtros.grid_columnconfigure(3, weight=1)
 
-        #conteúdo
-        self.main_frame = ctk.CTkFrame(self)
-        self.main_frame.grid(row=1, column=0, padx=20, pady=(0, 20), sticky="nsew")
-        self.main_frame.grid_columnconfigure(0, weight=1)
-        self.main_frame.grid_rowconfigure(1, weight=1)
+        ctk.CTkLabel(frame_filtros, text="Data Início (DD/MM/AAAA):").grid(row=0, column=0, padx=5)
+        self.entry_inicio = ctk.CTkEntry(frame_filtros)
+        self.entry_inicio.grid(row=0, column=1, padx=5, sticky="ew")
 
-        #filtros de data
-        self.filtros_frame = ctk.CTkFrame(self.main_frame)
-        self.filtros_frame.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
+        ctk.CTkLabel(frame_filtros, text="Data Fim (DD/MM/AAAA):").grid(row=0, column=2, padx=5)
+        self.entry_fim = ctk.CTkEntry(frame_filtros)
+        self.entry_fim.grid(row=0, column=3, padx=5, sticky="ew")
 
-        self.data_inicio_label = ctk.CTkLabel(self.filtros_frame, text="Data Início:")
-        self.data_inicio_label.grid(row=0, column=0, padx=5, pady=5)
+        self.btn_gerar = ctk.CTkButton(frame_filtros, text="Gerar Relatório", command=self.gerar_relatorio)
+        self.btn_gerar.grid(row=0, column=4, padx=10)
 
-        self.data_inicio_entry = ctk.CTkEntry(self.filtros_frame, placeholder_text="DD/MM/AAAA")
-        self.data_inicio_entry.grid(row=0, column=1, padx=5, pady=5)
+        # Tabela de relatório
+        self.tree = ttk.Treeview(self, columns=("data", "produtos", "total"), show="headings")
+        self.tree.heading("data", text="Data/Hora")
+        self.tree.heading("produtos", text="Itens Vendidos")
+        self.tree.heading("total", text="Total (R$)")
+        self.tree.column("data", width=150)
+        self.tree.column("produtos", width=400)
+        self.tree.column("total", width=100)
+        self.tree.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
 
-        self.data_fim_label = ctk.CTkLabel(self.filtros_frame, text="Data Fim:")
-        self.data_fim_label.grid(row=0, column=2, padx=5, pady=5)
+        scroll = ttk.Scrollbar(self, orient="vertical", command=self.tree.yview)
+        scroll.grid(row=1, column=1, sticky="ns", pady=10)
+        self.tree.configure(yscrollcommand=scroll.set)
 
-        self.data_fim_entry = ctk.CTkEntry(self.filtros_frame, placeholder_text="DD/MM/AAAA")
-        self.data_fim_entry.grid(row=0, column=3, padx=5, pady=5)
+    def gerar_relatorio(self):
+        inicio_str = self.entry_inicio.get().strip()
+        fim_str = self.entry_fim.get().strip()
 
-        self.gerar_relatorio_btn = ctk.CTkButton(self.filtros_frame, text="Gerar Relatório", command=self.gerar_relatorio)
-        self.gerar_relatorio_btn.grid(row=0, column=4, padx=5, pady=5)
-
-        #tabela de relatório
-        self.relatorio_tree = ttk.Treeview(
-            self.main_frame,
-            columns=("data", "total_vendas", "qtd_vendas", "produto_mais_vendido"),
-            show="headings"
-        )
-
-        self.relatorio_tree.heading("data", text="Data")
-        self.relatorio_tree.heading("total_vendas", text="Total Vendas")
-        self.relatorio_tree.heading("qtd_vendas", text="Qtd Vendas")
-        self.relatorio_tree.heading("produto_mais_vendido", text="Produto Mais Vendido")
-
-        self.relatorio_tree.column("data", width=100)
-        self.relatorio_tree.column("total_vendas", width=100, anchor="e")
-        self.relatorio_tree.column("qtd_vendas", width=100, anchor="center")
-        self.relatorio_tree.column("produto_mais_vendido", width=200)
-        self.relatorio_tree.grid(row=1, column=0, padx=10, pady=(0, 10), sticky="nsew")
-
-        #scroll relatório
-        scrollbar = ttk.Scrollbar(self.main_frame, orient="vertical", command=self.relatorio_tree.yview)
-        scrollbar.grid(row=1, column=1, sticky="ns")
-        self.relatorio_tree.configure(yscrollcommand=scrollbar.set)
-
-        #resumo do período
-        self.resumo_frame = ctk.CTkFrame(self)
-        self.resumo_frame.grid(row=2, column=0, padx=20, pady=(0, 20), sticky="ew")
-
-        self.total_periodo_label = ctk.CTkLabel(self.resumo_frame, text="Total no período: R$ 0.00", font=ctk.CTkFont(weight="bold"))
-        self.total_periodo_label.grid(row=0, column=0, padx=10, pady=10, sticky="w")
-
-        self.vendas_periodo_label = ctk.CTkLabel(self.resumo_frame, text="Vendas no período: 0", font=ctk.CTkFont(weight="bold"))
-        self.vendas_periodo_label.grid(row=0, column=1, padx=10, pady=10, sticky="w")
-
-        #carrega relatório inicial
-        self.carregar_relatorio_mensal()
-        self.bind("<<ShowFrame>>", lambda e: self.carregar_relatorio_mensal())
-
-    def parse_date(self, date_str): #converte string para data
         try:
-            return datetime.strptime(date_str, "%d/%m/%Y")
+            inicio = datetime.strptime(inicio_str, "%d/%m/%Y")
+            fim = datetime.strptime(fim_str, "%d/%m/%Y")
         except ValueError:
-            return None
-
-    def gerar_relatorio(self): #gera relatório filtrado por data
-        data_inicio = self.parse_date(self.data_inicio_entry.get())
-        data_fim = self.parse_date(self.data_fim_entry.get())
-
-        if not data_inicio or not data_fim:
-            messagebox.showwarning("Aviso", "Datas inválidas. Use o formato DD/MM/AAAA.")
-            return
-        if data_inicio > data_fim:
-            messagebox.showwarning("Aviso", "Data de início não pode ser maior que data de fim.")
+            messagebox.showerror("Erro", "Formato de data inválido! Use DD/MM/AAAA.")
             return
 
-        data_fim = datetime.combine(data_fim.date(), datetime.max.time())
+        # Limpa a tabela
+        for item in self.tree.get_children():
+            self.tree.delete(item)
 
-        pipeline = [
-            {"$match": {"data_venda": {"$gte": data_inicio, "$lte": data_fim}}},
-            {"$group": {
-                "_id": {"$dateToString": {"format": "%d/%m/%Y", "date": "$data_venda"}},
-                "total_vendas": {"$sum": "$valor_total"},
-                "qtd_vendas": {"$sum": 1},
-                "produtos_vendidos": {"$push": {"produtos": "$produtos"}}
-            }},
-            {"$sort": {"_id": 1}}
-        ]
+        # Query no MongoDB
+        query = {
+            "data": {
+                "$gte": inicio,
+                "$lte": fim
+            }
+        }
 
-        try:
-            resultados = list(vendas_col.aggregate(pipeline))
-            for item in self.relatorio_tree.get_children():
-                self.relatorio_tree.delete(item)
+        vendas = vendas_collection.find(query).sort("data", -1)
+        encontrou = False
 
-            total_periodo = 0
-            qtd_vendas_periodo = 0
+        for venda in vendas:
+            encontrou = True
+            data_str = venda["data"].strftime("%d/%m/%Y %H:%M")
+            
+            # CORREÇÃO: Constrói a string de produtos usando o snapshot salvo no array "itens"
+            nomes_produtos = []
+            if "itens" in venda:
+                for item in venda["itens"]:
+                    # Usa o nome salvo no momento da venda, com fallback para "Produto removido"
+                    nome = item.get("nome_produto", "Produto removido")
+                    qtd = item.get("quantidade", 0)
+                    nomes_produtos.append(f"{nome} (x{qtd})")
+            
+            produtos_str = ", ".join(nomes_produtos) if nomes_produtos else "Nenhum item"
+            
+            self.tree.insert("", "end", values=(
+                data_str,
+                produtos_str,
+                f"R${venda['total']:.2f}"
+            ))
 
-            for resultado in resultados:
-                data = resultado["_id"]
-                total_vendas = resultado["total_vendas"]
-                qtd_vendas = resultado["qtd_vendas"]
-                produtos_vendidos = []
-
-                for venda in resultado["produtos_vendidos"]:
-                    for produto in venda["produtos"]:
-                        produtos_vendidos.append(produto["produto_id"])
-
-                contagem = {}
-                for produto_id in produtos_vendidos:
-                    contagem[produto_id] = contagem.get(produto_id, 0) + 1
-
-                produto_mais_vendido = "N/A"
-                if contagem:
-                    produto_id_mais_vendido = max(contagem, key=contagem.get)
-                    produto = produtos_col.find_one({"_id": produto_id_mais_vendido})
-                    if produto:
-                        produto_mais_vendido = produto["nome"]
-
-                self.relatorio_tree.insert("", "end", values=(
-                    data,
-                    f"R$ {total_vendas:.2f}",
-                    qtd_vendas,
-                    produto_mais_vendido
-                ))
-
-                total_periodo += total_vendas
-                qtd_vendas_periodo += qtd_vendas
-
-            self.total_periodo_label.configure(text=f"Total no período: R$ {total_periodo:.2f}")
-            self.vendas_periodo_label.configure(text=f"Vendas no período: {qtd_vendas_periodo}")
-        except Exception as e:
-            messagebox.showerror("Erro", f"Erro ao gerar relatório: {str(e)}")
-
-    def carregar_relatorio_mensal(self): #carrega relatório dos últimos 30 dias
-        for item in self.relatorio_tree.get_children():
-            self.relatorio_tree.delete(item)
-
-        data_fim = datetime.now()
-        data_inicio = data_fim - timedelta(days=30)
-
-        pipeline = [
-            {"$match": {"data_venda": {"$gte": data_inicio, "$lte": data_fim}}},
-            {"$group": {
-                "_id": {"$dateToString": {"format": "%d/%m/%Y", "date": "$data_venda"}},
-                "total_vendas": {"$sum": "$valor_total"},
-                "qtd_vendas": {"$sum": 1},
-                "produtos_vendidos": {"$push": {"produtos": "$produtos"}}
-            }},
-            {"$sort": {"_id": 1}}
-        ]
-
-        try:
-            resultados = list(vendas_col.aggregate(pipeline))
-            total_periodo = 0
-            qtd_vendas_periodo = 0
-
-            for resultado in resultados:
-                data = resultado["_id"]
-                total_vendas = resultado["total_vendas"]
-                qtd_vendas = resultado["qtd_vendas"]
-                produtos_vendidos = []
-
-                for venda in resultado["produtos_vendidos"]:
-                    for produto in venda["produtos"]:
-                        produtos_vendidos.append(produto["produto_id"])
-
-                contagem = {}
-                for produto_id in produtos_vendidos:
-                    contagem[produto_id] = contagem.get(produto_id, 0) + 1
-
-                produto_mais_vendido = "N/A"
-                if contagem:
-                    produto_id_mais_vendido = max(contagem, key=contagem.get)
-                    produto = produtos_col.find_one({"_id": produto_id_mais_vendido})
-                    if produto:
-                        produto_mais_vendido = produto["nome"]
-
-                self.relatorio_tree.insert("", "end", values=(
-                    data,
-                    f"R$ {total_vendas:.2f}",
-                    qtd_vendas,
-                    produto_mais_vendido
-                ))
-
-                total_periodo += total_vendas
-                qtd_vendas_periodo += qtd_vendas
-
-            self.total_periodo_label.configure(text=f"Total no período: R$ {total_periodo:.2f}")
-            self.vendas_periodo_label.configure(text=f"Vendas no período: {qtd_vendas_periodo}")
-            self.data_inicio_entry.delete(0, "end")
-            self.data_inicio_entry.insert(0, data_inicio.strftime("%d/%m/%Y"))
-            self.data_fim_entry.delete(0, "end")
-            self.data_fim_entry.insert(0, data_fim.strftime("%d/%m/%Y"))
-        except Exception as e:
-            messagebox.showerror("Erro", f"Erro ao carregar relatório: {str(e)}")
+        if not encontrou:
+            messagebox.showinfo("Relatório", "Nenhuma venda encontrada no período selecionado.")
