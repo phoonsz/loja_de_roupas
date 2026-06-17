@@ -1,8 +1,9 @@
 import customtkinter as ctk
-from tkinter import ttk, messagebox, simpledialog
+from customtkinter import CTkInputDialog
+from tkinter import ttk, messagebox
 from config import produtos_collection, vendas_collection
 from datetime import datetime
-import pymongo
+from bson import ObjectId
 
 class VendasFrame(ctk.CTkFrame):
     def __init__(self, parent, controller):
@@ -34,7 +35,7 @@ class VendasFrame(ctk.CTkFrame):
         self.tree_produtos.column("estoque", width=80)
         self.tree_produtos.grid(row=1, column=0, sticky="nsew")
 
-        scroll_esq = ttk.Scrollbar(frame_esquerda, orient="vertical", command=self.tree_produtos.yview)
+        scroll_esq = ttk.Scrollbar(frame_esquerda, orient="vertical", command=self.tree_produtos.yview, style="Vertical.TScrollbar")
         scroll_esq.grid(row=1, column=1, sticky="ns")
         self.tree_produtos.configure(yscrollcommand=scroll_esq.set)
 
@@ -64,7 +65,7 @@ class VendasFrame(ctk.CTkFrame):
         # CORREÇÃO: Duplo clique para editar quantidade
         self.tree_carrinho.bind('<Double-1>', self.editar_quantidade_carrinho)
 
-        scroll_dir = ttk.Scrollbar(frame_direita, orient="vertical", command=self.tree_carrinho.yview)
+        scroll_dir = ttk.Scrollbar(frame_direita, orient="vertical", command=self.tree_carrinho.yview, style="Vertical.TScrollbar")
         scroll_dir.grid(row=1, column=1, sticky="ns")
         self.tree_carrinho.configure(yscrollcommand=scroll_dir.set)
 
@@ -105,7 +106,7 @@ class VendasFrame(ctk.CTkFrame):
             return
 
         produto_id = selecionado[0]
-        produto = produtos_collection.find_one({"_id": pymongo.ObjectId(produto_id)})
+        produto = produtos_collection.find_one({"_id": ObjectId(produto_id)})
         if not produto:
             messagebox.showerror("Erro", "Produto não encontrado no banco!")
             return
@@ -116,7 +117,19 @@ class VendasFrame(ctk.CTkFrame):
             messagebox.showerror("Erro", "Este produto está esgotado!")
             return
 
-        qtd = simpledialog.askinteger("Quantidade", f"Quantos {produto['nome']}? (Estoque: {estoque_atual})", minvalue=1, maxvalue=estoque_atual)
+        dialog = CTkInputDialog(text=f"Quantos {produto['nome']}? (Estoque: {estoque_atual})", title="Quantidade")
+        qtd = dialog.get_input()
+        if qtd is None:  # cancelou
+            return
+        try:
+            qtd = int(qtd)
+            if qtd <= 0 or qtd > estoque_atual:
+                messagebox.showerror("Erro", "Quantidade inválida!")
+                return
+        except ValueError:
+            messagebox.showerror("Erro", "Digite um número inteiro!")
+            return
+    
         if not qtd:
             return
 
@@ -152,15 +165,22 @@ class VendasFrame(ctk.CTkFrame):
         item = self.carrinho[index]
         
         # Busca estoque atualizado
-        produto_db = produtos_collection.find_one({"_id": pymongo.ObjectId(item["produto_id"])})
+        produto_db = produtos_collection.find_one({"_id": ObjectId(item["produto_id"])})
         if not produto_db:
             messagebox.showerror("Erro", "Produto não encontrado!")
             return
-        
-        nova_qtd = simpledialog.askinteger("Editar Quantidade", f"Nova quantidade para {item['nome']}? (Estoque: {produto_db['quantidade']})", minvalue=1, maxvalue=produto_db['quantidade'])
-        if not nova_qtd:
+         #Oi caro leitor, curiosidade, meu cérebro já está derretendo
+        dialog = CTkInputDialog(text=f"Nova quantidade para {item['nome']}? (Estoque: {produto_db['quantidade']})", title="Editar Qtd")
+        nova_qtd = dialog.get_input()
+        if nova_qtd is None: return
+        try:
+            nova_qtd = int(nova_qtd)
+            if nova_qtd <= 0 or nova_qtd > produto_db['quantidade']:
+                messagebox.showerror("Erro", "Quantidade inválida!")
+                return
+        except ValueError:
+            messagebox.showerror("Erro", "Digite um número inteiro!")
             return
-        
         item["quantidade"] = nova_qtd
         item["subtotal"] = nova_qtd * item["preco_unitario"]
         self.atualizar_carrinho_ui()
@@ -215,7 +235,7 @@ class VendasFrame(ctk.CTkFrame):
             # 2. Atualiza o estoque de cada produto (baixa)
             for item in self.carrinho:
                 resultado = produtos_collection.update_one(
-                    {"_id": pymongo.ObjectId(item["produto_id"])},
+                    {"_id": ObjectId(item["produto_id"])},
                     {"$inc": {"quantidade": -item["quantidade"]}}
                 )
                 if resultado.matched_count == 0:

@@ -9,9 +9,11 @@ class App(ctk.CTk):
         super().__init__()
         self.title("Loja de Roupas - Gestão")
         self.geometry("1000x600")
-        # CORREÇÃO 1: Removido o alpha transparente
-        # self.attributes('-alpha', 0.90)  # <--- DELETAR ESTA LINHA
-
+        self.configure(bg='#2b2b2b')  # mesma cor do tema escuro
+        self.resizable(True, True)   # permite redimensionar
+        self.minsize(800, 500)       # tamanho mínimo razoável
+        self.bind('<Configure>', self.on_resize)
+        # CORREÇÃO 1: Removido o alpha transparente (mas quero colocar novamente grr)
         # CORREÇÃO 2: Estilizar as Treeviews para combinarem com o tema escuro
         self.style = ttk.Style()
         self.style.theme_use("clam")  # Permite customização completa
@@ -26,13 +28,13 @@ class App(ctk.CTk):
         self.sidebar.grid(row=0, column=0, sticky="nsew")
         self.sidebar.grid_rowconfigure(4, weight=1)
 
-        self.btn_produtos = ctk.CTkButton(self.sidebar, text="📦 Produtos", command=self.mostrar_produtos)
+        self.btn_produtos = ctk.CTkButton(self.sidebar, text="Produtos", command=self.mostrar_produtos)
         self.btn_produtos.grid(row=0, column=0, padx=20, pady=(20, 10), sticky="ew")
 
-        self.btn_vendas = ctk.CTkButton(self.sidebar, text="🛒 Vendas", command=self.mostrar_vendas)
+        self.btn_vendas = ctk.CTkButton(self.sidebar, text="Vendas", command=self.mostrar_vendas)
         self.btn_vendas.grid(row=1, column=0, padx=20, pady=10, sticky="ew")
 
-        self.btn_relatorios = ctk.CTkButton(self.sidebar, text="📊 Relatórios", command=self.mostrar_relatorios)
+        self.btn_relatorios = ctk.CTkButton(self.sidebar, text="Relatórios", command=self.mostrar_relatorios)
         self.btn_relatorios.grid(row=2, column=0, padx=20, pady=10, sticky="ew")
 
         # Container principal para as telas
@@ -50,6 +52,10 @@ class App(ctk.CTk):
 
         self.mostrar_produtos()
 
+    def on_resize(self, event):
+        if event.widget == self:
+            self.update_idletasks()  # força redesenho imediato
+        
     def aplicar_tema_tabelas(self, modo):
         """Aplica as cores corretas nas Treeviews baseado no tema (dark/light)"""
         if modo == "dark":
@@ -61,9 +67,11 @@ class App(ctk.CTk):
             fg = "#000000"
             heading_bg = "#e0e0e0"
         
-        self.style.configure("Treeview", background=bg, foreground=fg, fieldbackground=bg)
-        self.style.configure("Treeview.Heading", background=heading_bg, foreground=fg, font=('Arial', 10, 'bold'))
+        self.style.configure("Treeview", background=bg, foreground=fg, fieldbackground=bg, borderwidth=0, highlightthickness=0)
+        self.style.configure("Treeview.Heading", background=heading_bg, foreground=fg, font=('Arial', 10, 'bold'), borderwidth=0)
         self.style.map('Treeview', background=[('selected', '#347083')])
+        self.style.configure("Vertical.TScrollbar", background=bg, troughcolor=bg, bordercolor=bg, arrowcolor=fg, width=10)
+        self.style.map("Vertical.TScrollbar", background=[('active', '#555555')])
 
     def mostrar_produtos(self):
         self.frames["ProdutosFrame"].tkraise()
